@@ -52,7 +52,7 @@ If no pair meets the preferred threshold, the game safely falls back to another 
 
 - Python 3.10 or newer recommended
 - Tkinter, normally included with standard Windows and macOS Python installations
-- A downloaded SCOWL American-English word list for validation
+- `cmudict` for American English word validation
 
 Install the dependency:
 
@@ -78,13 +78,21 @@ Or:
 python spinny_letters.py
 ```
 
-## Dictionary
+## Dictionary Validation
 
-On first launch, Spinny Letters automatically downloads the SCOWL size-60 American-English word list and saves a cleaned local copy as `spinny_letters_dictionary.txt`. Future launches use that cached file and work offline.
+Spinny Letters uses CMUdict as its primary American English dictionary. If CMUdict is installed, the status panel displays:
 
-The loader keeps lowercase ASCII alphabetic entries only. Because proper nouns in SCOWL are normally capitalized, this prevents names such as `Hiromasa` from entering the playable-word pool or appearing as timeout suggestions.
+```text
+American English dictionary: ON
+```
 
-If the download fails, the game falls back to the editable custom allow/block list and tries again the next time it starts without a local dictionary.
+If it is unavailable, the game switches to custom-list-only mode. Install the dependency with:
+
+```bash
+py -m pip install cmudict
+```
+
+CMUdict is primarily a pronunciation dictionary, so it can contain entries that are unusual for a casual word game. The editable override list lets you correct those cases without modifying the Python source.
 
 ## Edit Allowed and Blocked Words
 
@@ -141,4 +149,4 @@ spinny-letters/
 
 ## Notes
 
-The game downloads its dictionary once, stores it locally, and then works offline on future launches.
+The game runs locally and does not download a dictionary automatically. Installing the dependency once provides offline dictionary validation on future launches.

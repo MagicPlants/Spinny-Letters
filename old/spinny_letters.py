@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import gzip
 import json
 import os
 import random
@@ -10,7 +9,6 @@ import subprocess
 import sys
 import time
 import tkinter as tk
-import urllib.request
 from pathlib import Path
 from tkinter import messagebox, simpledialog
 
@@ -24,12 +22,10 @@ REEL_LENGTH = 17
 CENTER_INDEX = REEL_LENGTH // 2
 HIGH_SCORE_FILE = Path(__file__).with_name("spinny_letters_high_scores.json")
 WORD_OVERRIDE_FILE = Path(__file__).with_name("spinny_letters_wordlist.txt")
-DICTIONARY_FILE = Path(__file__).with_name("spinny_letters_dictionary.txt")
-DICTIONARY_URL = "https://raw.githubusercontent.com/BartMassey/wordlists/main/scowl.txt.gz"
 
 
 class WordValidator:
-    """Validate words with a downloaded American-English SCOWL dictionary."""
+    """Validate words with an American-English dictionary plus editable overrides."""
 
     FILE_HEADER = """# Spinny Letters dictionary overrides
 #
@@ -45,67 +41,30 @@ class WordValidator:
 """
 
     def __init__(self) -> None:
-        self.words: set[str] = set()
+        self.words: set[str] | None = None
         self.allowed_words: set[str] = set()
         self.blocked_words: set[str] = set()
-        self.dictionary_error = ""
         self.ensure_override_file()
         self.reload_overrides()
-        self.load_dictionary()
+
+        try:
+            import cmudict  # type: ignore
+
+            # CMUdict is an American-English pronunciation dictionary.
+            self.words = {
+                re.sub(r"\(\d+\)$", "", word.lower())
+                for word in cmudict.words()
+                if word.isalpha()
+            }
+        except Exception:
+            self.words = None
+
         self.pair_index: dict[tuple[str, str], list[str]] = {}
         self.rebuild_pair_index()
 
     def ensure_override_file(self) -> None:
         if not WORD_OVERRIDE_FILE.exists():
             WORD_OVERRIDE_FILE.write_text(self.FILE_HEADER, encoding="utf-8")
-
-    def download_dictionary(self) -> None:
-        request = urllib.request.Request(
-            DICTIONARY_URL,
-            headers={"User-Agent": "Spinny-Letters/1.0"},
-        )
-        with urllib.request.urlopen(request, timeout=25) as response:
-            compressed = response.read()
-
-        text = gzip.decompress(compressed).decode("utf-8", errors="ignore")
-        words = self.clean_dictionary_lines(text.splitlines())
-        if len(words) < 10000:
-            raise RuntimeError("Downloaded dictionary did not contain enough usable words.")
-
-        DICTIONARY_FILE.write_text("\n".join(sorted(words)) + "\n", encoding="utf-8")
-
-    @staticmethod
-    def clean_dictionary_lines(lines: list[str]) -> set[str]:
-        words: set[str] = set()
-        for raw_line in lines:
-            word = raw_line.strip()
-            # SCOWL proper nouns are normally capitalized. Keeping only entries
-            # already written in lowercase removes names such as Hiromasa.
-            if word != word.lower():
-                continue
-            if len(word) < 2 or not word.isascii() or not word.isalpha():
-                continue
-            words.add(word)
-        return words
-
-    def load_dictionary(self) -> None:
-        self.dictionary_error = ""
-        if not DICTIONARY_FILE.exists():
-            try:
-                self.download_dictionary()
-            except Exception as exc:
-                self.dictionary_error = str(exc)
-                self.words = set()
-                return
-
-        try:
-            lines = DICTIONARY_FILE.read_text(encoding="utf-8").splitlines()
-            self.words = self.clean_dictionary_lines(lines)
-            if not self.words:
-                raise RuntimeError("The local dictionary is empty.")
-        except Exception as exc:
-            self.dictionary_error = str(exc)
-            self.words = set()
 
     def reload_overrides(self) -> None:
         self.allowed_words.clear()
@@ -126,7 +85,7 @@ class WordValidator:
             if line[0] in "+-":
                 action, line = line[0], line[1:].strip()
 
-            if not line.isascii() or not line.isalpha():
+            if not line.isalpha():
                 continue
 
             if action == "-":
@@ -139,13 +98,13 @@ class WordValidator:
     def rebuild_pair_index(self) -> None:
         """Build a start/end-letter index from the active dictionary and overrides."""
         self.reload_overrides()
-        source_words = set(self.words)
+        source_words = set(self.words or set())
         source_words.update(self.allowed_words)
         source_words.difference_update(self.blocked_words)
 
         pair_index: dict[tuple[str, str], list[str]] = {}
         for word in source_words:
-            if len(word) < 2 or not word.isascii() or not word.isalpha():
+            if len(word) < 2 or not word.isalpha():
                 continue
             pair_index.setdefault((word[0], word[-1]), []).append(word)
 
@@ -158,7 +117,7 @@ class WordValidator:
         self.rebuild_pair_index()
         if not self.pair_index:
             raise RuntimeError(
-                "No playable words are available. Check your internet connection or add words to the custom list."
+                "No playable words are available. Install cmudict or add words to the custom list."
             )
 
         eligible = [
@@ -179,13 +138,13 @@ class WordValidator:
 
     @property
     def dictionary_enabled(self) -> bool:
-        return bool(self.words)
+        return self.words is not None
 
     @property
     def mode_label(self) -> str:
         if self.dictionary_enabled:
-            return f"American English dictionary: {len(self.words):,} words"
-        return "Dictionary download failed: custom list only"
+            return "American English dictionary: ON"
+        return "Dictionary missing: custom list only"
 
     def is_word(self, word: str) -> bool:
         normalized = word.lower()
@@ -195,6 +154,8 @@ class WordValidator:
             return False
         if normalized in self.allowed_words:
             return True
+        if self.words is None:
+            return False
         return normalized in self.words
 
 

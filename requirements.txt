@@ -1,1 +1,1 @@
-cmudict>=1.0.32
+# No third-party Python packages required.
