@@ -1,0 +1,12 @@
+# Spinny Letters custom word list
+#
+# Put one instruction on each line.
+# +word always allows a word.
+# -word always blocks a word.
+# A plain word without a symbol is also allowed.
+#
+# Examples:
+# +photoshop
+# -inum
+
+-inum
