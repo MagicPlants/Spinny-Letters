@@ -3,6 +3,7 @@
 **Spinny Letters** is a fast-paced desktop word game written in Python with Tkinter. Two animated letter reels spin across the screen. Stop them, then enter an American English word that begins with the first selected letter and ends with the second.
 
 <img src="images/screenshot.png"><br>
+<img src="images/screenshot2.png"><br>
 
 Every correct answer earns points and adds 20 seconds to the clock. Keep playing until time expires, then try to beat your saved high score.
 
