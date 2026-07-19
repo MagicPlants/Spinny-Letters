@@ -55,19 +55,7 @@ If no pair meets the preferred threshold, the game safely falls back to another 
 
 - Python 3.10 or newer recommended
 - Tkinter, normally included with standard Windows and macOS Python installations
-- A downloaded SCOWL American-English word list for validation
-
-Install the dependency:
-
-```bash
-py -m pip install -r requirements.txt
-```
-
-On systems where `py` is unavailable:
-
-```bash
-python -m pip install -r requirements.txt
-```
+- A downloaded SCOWL American-English word list for validation (Spinny Letters does this for you on first run)
 
 ## Run the Game
 
